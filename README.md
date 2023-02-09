@@ -1,6 +1,7 @@
 # WebProgramming-final-research
 
 
+
 <div dir='rtl'>
 <h1>کافکا</h1>
 
@@ -190,10 +191,14 @@ Kafka Connect API برای ساخت و اجرای اتصالات واردات/ص
 
 </h4>
 
+<section dir="ltr">
+
 ```
 $ tar -xzf kafka_2.13-3.4.0.tgz
 $ cd kafka_2.13-3.4.0
 ```
+
+</section>
 
 <h4>
 مرحله 2: محیط کافکا را شروع کنید
@@ -211,17 +216,25 @@ $ cd kafka_2.13-3.4.0
 دستورات زیر را اجرا کنید تا همه سرویس ها به ترتیب درست شروع شوند:
 </h4>
 
+<section dir="ltr">
+
 ```
 # Start the ZooKeeper service
 $ bin/zookeeper-server-start.sh config/zookeeper.properties
 ```
 
+</section>
+
 <p>ترمینال دیگری را باز کنید و کد زیر را اجرا کنید</p>
+
+<section dir="ltr">
 
 ```
 # Start the Kafka broker service
 $ bin/kafka-server-start.sh config/server.properties
 ```
+
+</section>
 
 <p>
 هنگامی که همه سرویس ها با موفقیت راه اندازی شدند، یک محیط اولیه کافکا در حال اجرا و آماده برای استفاده خواهید داشت.
@@ -237,21 +250,33 @@ Kafka with KRaft
 <h4>
 یک Cluster UUIDایجاد کنید و کد زیر را اجرا کنید
 
+<section dir="ltr">
+
 ```
 $ KAFKA_CLUSTER_ID="$(bin/kafka-storage.sh random-uuid)"
 ```
 
+</section>
+
 سپس فهرست راهنماها را قالب بندی کنید
+
+<section dir="ltr">
 
 ```
 $ bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties
 ```
 
+</section>
+
 سرور کافکا را راه اندازی کنید
+
+<section dir="ltr">
 
 ```
 $ bin/kafka-server-start.sh config/kraft/server.properties
 ```
+
+</section>
 
 هنگامی که سرور کافکا با موفقیت راه اندازی شد، یک محیط اولیه کافکا در حال اجرا و آماده برای استفاده خواهید داشت.
 
@@ -262,11 +287,17 @@ $ bin/kafka-server-start.sh config/kraft/server.properties
 
 حال باید در ترمینال دیگری کد زیر را اجرا نمایید.
 
+<section dir="ltr">
+
 ```
 $ bin/kafka-topics.sh --create --topic quickstart-events --bootstrap-server localhost:9092
 ```
 
+</section>
+
 همه ابزارهای خط فرمان کافکا دارای گزینه های اضافی هستند: دستور kafka-topics.sh را بدون هیچ آرگومانی برای نمایش اطلاعات استفاده اجرا کنید.
+
+<section dir="ltr">
 
 ```
 $ bin/kafka-topics.sh --describe --topic quickstart-events --bootstrap-server localhost:9092
@@ -275,10 +306,14 @@ Topic: quickstart-events        TopicId: NPmZHyhbR9y00wMglMH2sg PartitionCount: 
 
 ```
 
+</section>
+
 مرحله 4: برخی از رویدادها را در موضوع بنویسید
 مشتری کافکا برای نوشتن (یا خواندن) رویدادها از طریق شبکه با کارگزاران کافکا ارتباط برقرار می کند. پس از دریافت، کارگزاران رویدادها را تا زمانی که شما نیاز دارید - حتی برای همیشه - به روشی بادوام و بدون عیب ذخیره می کنند.
 
 برای نوشتن چند رویداد در موضوع خود، کلاینت سازنده کنسول را اجرا کنید. به‌طور پیش‌فرض، هر خطی که وارد می‌کنید منجر به نوشتن یک رویداد جداگانه برای موضوع می‌شود.
+
+<section dir="ltr">
 
 ```
 $ bin/kafka-console-producer.sh --topic quickstart-events --bootstrap-server localhost:9092
@@ -286,13 +321,19 @@ This is my first event
 This is my second event
 ```
 
+</section>
+
 مرحله 5: رویدادها را بخوانید
+
+<section dir="ltr">
 
 ```
 $ bin/kafka-console-consumer.sh --topic quickstart-events --from-beginning --bootstrap-server localhost:9092
 This is my first event
 This is my second event
 ```
+
+</section>
 
 به راحتی آزمایش کنید: به عنوان مثال، برای نوشتن رویدادهای اضافی به پایانه تولیدکننده خود (مرحله قبلی) برگردید و ببینید که چگونه رویدادها بلافاصله در پایانه مصرف کننده شما نشان داده می شوند.
 
@@ -307,32 +348,50 @@ This is my second event
 
 فایل config/connect-standalone.properties را ویرایش کنید، ویژگی پیکربندی plugin.path را با موارد زیر اضافه یا تغییر دهید و فایل را ذخیره کنید:
 
+<section dir="ltr">
+
 ```
 > echo "plugin.path=libs/connect-file-3.4.0.jar"
 ```
 
+</section>
+
 سپس، با ایجاد برخی از داده های اولیه برای آزمایش شروع کنید:
+
+<section dir="ltr">
 
 ```
 > echo -e "foo\nbar" > test.txt
 ```
 
+</section>
+
 یا در ویندوز:
+
+<section dir="ltr">
 
 ```
 > echo foo> test.txt
 > echo bar>> test.txt
 ```
 
+</section>
+
 در مرحله بعد، دو کانکتور را در حالت مستقل اجرا می کنیم، به این معنی که آنها در یک فرآیند واحد، محلی و اختصاصی اجرا می شوند. ما سه فایل پیکربندی را به عنوان پارامتر ارائه می کنیم. اولین مورد همیشه پیکربندی فرآیند اتصال کافکا است که شامل پیکربندی رایج مانند کارگزاران کافکا برای اتصال به و قالب سریال سازی برای داده ها است. فایل های پیکربندی باقیمانده هر کدام یک کانکتور برای ایجاد مشخص می کنند. این فایل ها شامل یک نام کانکتور منحصر به فرد، کلاس اتصال دهنده برای نمونه سازی و هر پیکربندی دیگر مورد نیاز کانکتور هستند.
+
+<section dir="ltr">
 
 ```
 > bin/connect-standalone.sh config/connect-standalone.properties config/connect-file-source.properties config/connect-file-sink.properties
 ```
 
+</section>
+
 این فایل‌های پیکربندی نمونه، همراه با کافکا، از پیکربندی کلاستر محلی پیش‌فرض که قبلاً شروع کرده‌اید استفاده می‌کنند و دو رابط ایجاد می‌کنند: اولی یک رابط منبع است که خطوط را از یک فایل ورودی می‌خواند و هر کدام را به یک موضوع کافکا تولید می‌کند و دومی یک رابط سینک است. که پیام های یک موضوع کافکا را می خواند و هر کدام را به صورت یک خط در یک فایل خروجی تولید می کند.
 
 در طول راه‌اندازی، تعدادی پیام گزارش مشاهده خواهید کرد، از جمله برخی از آنها که نشان می‌دهند اتصال‌دهنده‌ها در حال نمونه‌سازی هستند. هنگامی که فرآیند اتصال کافکا شروع شد، کانکتور منبع باید شروع به خواندن خطوط از test.txt و تولید آنها به تست اتصال مبحث کند، و رابط سینک باید شروع به خواندن پیام‌ها از تست اتصال موضوع کند و آنها را در آزمون فایل بنویسد. .sink.txt. با بررسی محتویات فایل خروجی می‌توانیم تأیید کنیم که داده‌ها از طریق کل خط لوله تحویل داده شده است:
+
+<section dir="ltr">
 
 ```
 > more test.sink.txt
@@ -340,7 +399,11 @@ foo
 bar
 ```
 
+</section>
+
 توجه داشته باشید که داده‌ها در تست اتصال موضوع کافکا ذخیره می‌شوند، بنابراین می‌توانیم یک مصرف‌کننده کنسول را برای دیدن داده‌های موضوع اجرا کنیم (یا از کد مصرف‌کننده سفارشی برای پردازش آن استفاده کنیم):
+
+<section dir="ltr">
 
 ```
 > bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic connect-test --from-beginning
@@ -349,12 +412,18 @@ bar
 ...
 ```
 
+</section>
+
 اتصال دهنده ها به پردازش داده ها ادامه می دهند، بنابراین ما می توانیم داده ها را به فایل اضافه کنیم و شاهد حرکت آن در خط لوله باشیم:
+
+<section dir="ltr">
 
 ```
 > echo Another line>> test.txt
 
 ```
+
+</section>
 
 باید این خط را در خروجی مصرف کننده کنسول و در فایل سینک مشاهده کنید.
 
@@ -362,6 +431,8 @@ bar
 هنگامی که داده های شما به عنوان رویداد در کافکا ذخیره می شوند، می توانید داده ها را با کتابخانه مشتری Kafka Streams برای جاوا/اسکالا پردازش کنید. این به شما امکان می‌دهد تا برنامه‌ها و ریزسرویس‌های لحظه‌ای حیاتی را پیاده‌سازی کنید، جایی که داده‌های ورودی و/یا خروجی در موضوعات کافکا ذخیره می‌شوند. Kafka Streams سادگی نوشتن و استقرار برنامه‌های جاوا و اسکالا استاندارد در سمت کلاینت را با مزایای فناوری خوشه سمت سرور کافکا ترکیب می‌کند تا این برنامه‌ها را بسیار مقیاس‌پذیر، الاستیک، مقاوم در برابر خطا و توزیع کند. این کتابخانه دقیقاً یک بار پردازش، عملیات و تجمیع حالت، پنجره‌سازی، پیوستن، پردازش بر اساس زمان رویداد و موارد دیگر را پشتیبانی می‌کند.
 
 برای اولین بار، نحوه پیاده سازی الگوریتم محبوب WordCount را در اینجا آورده ایم:
+
+<section dir="ltr">
 
 ```
 KStream<String, String> textLines = builder.stream("quickstart-events");
@@ -374,6 +445,8 @@ KTable<String, Long> wordCounts = textLines
 wordCounts.toStream().to("output-topic", Produced.with(Serdes.String(), Serdes.Long()));
 ```
 
+</section>
+
 مرحله 8: محیط کافکا را خاتمه دهید
 اکنون که به پایان شروع سریع رسیده‌اید، با خیال راحت محیط کافکا را خراب کنید—یا به بازی کردن ادامه دهید.
 
@@ -382,10 +455,14 @@ wordCounts.toStream().to("output-topic", Produced.with(Serdes.String(), Serdes.L
 در نهایت، اگر بخش Kafka with ZooKeeper دنبال شد، سرور ZooKeeper را با Ctrl-C متوقف کنید.
 اگر همچنین می‌خواهید داده‌های محیط کافکا محلی خود را حذف کنید، از جمله رویدادهایی که در طول مسیر ایجاد کرده‌اید، دستور را اجرا کنید:
 
+<section dir="ltr">
+
 ```
 $ rm -rf /tmp/kafka-logs /tmp/zookeeper /tmp/kraft-combined-logs
 
 ```
+
+</section>
 
 پس از طی این مراحل
 شما شروع سریع آپاچی کافکا را با موفقیت به پایان رساندید.
@@ -517,6 +594,3 @@ Admin API از مدیریت و بازرسی موضوعات، بروکرها، ac
 </br>
 
 </div>
-
-
-
