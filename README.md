@@ -1,11 +1,5 @@
 # WebProgramming-final-research
 
-
-
-
-
-# WebProgramming-final-research
-
 <div dir='rtl'>
 <h1>کافکا</h1>
 
@@ -623,6 +617,400 @@ Admin API از مدیریت و بازرسی موضوعات، بروکرها، ac
 </p>
 </br>
 </br>
+
+## امنیت 
+
+### ۷.۱ مروری بر امنیت 
+
+از نسخه 0.9.0.0 کافکا، مواردی در جهت افزایش امنیت به آن اضافه شدند که برخی از آنها به شرح زیر هستند:
+ 
+
+1. هویت سنجی برای اتصال client ها به بروکر. با استفاده از SSL یا SASL
+2. رمزگذاری کانکتور هایی که بروکر ها را به zookeeper متصل می کنند.
+3. رمزگداری داده هایی که بروکر ها منتقل می کنند.
+4. اعطای مجوز برای خواندن/ نوشتن داده ها توسط client ها.
+5. استفاده از مکانیزم خارجی برای هویت سنجی.
+
+البته لازم به ذکر است که اجباری در جهت استفاده از این موارد ایمنی وجود ندارد
+و مشکلی در اتصال بین خوشه هایی که این موارد را دارند و ندارند به وجود نخواهد آمد.
+
+### ۷.۲ تنظیمات listener 
+
+برای این که یک خوشه از کافکا را ایمن کنیم، باید کانال های ارتباطی سرور ها را ایمن کنیم.
+سرور ها listener هایی تعریف می کنند که از طریق آنها با سایر سرور ها و یا کلاینت ها در ارتباط باشند.
+برای هر listener می توانیم شیوه هویت سنجی را مشخص کنیم تا امنیت سرور را تضمین کنیم.
+
+سرور های کافکا می توانند بر روی پورت های مختلفی منتظر اتصال باشند.
+تنظیم پورت ها از طریق تنظیمات سرور انجام پذیر است.
+در این فایل می توان به فرمت زیر، چندین listener تعریف کرد که با یک ویرگول از هم جدا شده اند.
+
+<div dir = "ltr">
+
+```yaml
+{LISTENER_NAME}://{hostname}:{port}
+```
+
+</div>
+
+مثلا:
+
+<div dir = "ltr">
+
+```yaml
+listeners=CLIENT://localhost:9092 
+```
+
+</div>
+
+پروتکل امنیتی listener ها را می توان در فایل 
+`listener.security.protocol.map`
+که تنظیمات آن با کاما از هم جدا شده اند. مثلا در خط زیر،‌ تنظیمات برای دو listener انجام شده 
+که اولی از پروتکل `SSL` و دومی  از پروتکل `PLAINTEXT` استفاده می کند:
+
+<div dir = "ltr">
+
+```yaml
+listener.security.protocol.map=CLIENT:SSL,BROKER:PLAINTEXT
+```
+
+</div>
+
+گزینه های قابل استفاده برای پروتکل امنیتی به شرح زیر هستند:
+
+1. PLAINTEXT
+2. SSL
+3. SASL_PLAINTEXT
+4. SASL_SSL
+
+پروتکل `PLAINTEXT` هیچ گونه امکانات امنیتی ندارد و تنظیمات خاصی هم لازم ندارد.
+ پس به سه مورد باقی مانده می پردازیم:
+
+
+
+
+در یک خوشه KRaft، هر سروری که مقدار `broker` در `process.roles` برای مشخص شده باشد، `broker` خواهد بود
+و هر سروری که مقدار `controller` برایش مشخص شده باشد، `controller` خواهد بود.
+تنظیمات listener هم بسته به همین نقش متفاوت خواهد بود. listenerی که توسط `inter.broker.listener.name ` مشخص شده باشد
+صرفا برای درخواست های بین broker ها استفاده می شود.
+controller ها هم باید از listener های جداگانه استفاده کنند که در `controller.listener.names` تعریف شده اند.
+این listener ها نمیتوانند با listenerهایی که برای ارتباط بین بروکر ها استفاده می شوند مشترک باشند.
+
+controller ها هم از طرف سایر controller ها و هم از طرف broker ها درخواست دریافت می کنند.
+در نتیجه حتی اگر سروری نقش controller نداشته باشد، باز هم باید listener های controller خود را به همراه تنظیمات امنیتی آنها مشخص کند.
+به عنوان مثال، می توانیم از تنظیمات زیر برای یک broker مستقل استفاده کنیم:
+
+<div dir = "ltr">
+
+```yaml
+process.roles=broker
+listeners=BROKER://localhost:9092
+inter.broker.listener.name=BROKER
+controller.quorum.voters=0@localhost:9093
+controller.listener.names=CONTROLLER
+listener.security.protocol.map=BROKER:SASL_SSL,CONTROLLER:SASL_SSL
+```
+
+</div>
+
+برای listener کنترلر در این تنظیمات مشخص شده که از از پروتکل `SASL_SSL` استفاده کند،
+اما در لیست listener ها تعریف نشده است، چون broker قرار نیست که listener کنترلر را خودش باز کند.
+پورتی که قرار است از آن استفاده شود، در `controller.quorum.voters` مشخص می شود که لیست کامل کنترلر ها را دارد.
+
+برای سرور های KRaft که هم controller و هم broker هستند، این تنظیمات مشابه است.
+با این تفاوت که listener باید در `listeners` مشخص شده باشد:
+
+<div dir = "ltr">
+
+```yaml
+process.roles=broker,controller
+listeners=BROKER://localhost:9092,CONTROLLER://localhost:9093
+inter.broker.listener.name=BROKER
+controller.quorum.voters=0@localhost:9093
+controller.listener.names=CONTROLLER
+listener.security.protocol.map=BROKER:SASL_SSL,CONTROLLER:SASL_SSL
+```
+</div>
+
+پورتی که در `controller.quorum.voters` مشخص می شود باید دقیقا مطابق یکی از پورت های باز listener های کنترلر باشد.
+که در مثال بالا هم این مورد رعایت شده است.
+
+کنترلر درخواست هایی که برای هر یک از listener هایش هک در `controller.listener.names` تعریف شده باشد را قبول می کند.
+کنترلر معمولا فقط یک listener دارد ولی می تواند چند تا هم داشته باشد.
+با این کار مثلا می توان پورت یا پروتکل امنیتی listener را عوض کرد.
+معمولا اولین پورتی که تعریف شده باشد، اولین آنها برای درخواست های به بیرون استفاده می شود.
+
+### ۷.۳ رمزگذاری و هویت سنجی با SSL
+
+برای رمزگذاری ترافیک و هویت سنجی در کلاینت ها می توان از SSL استفاده کرد.
+البته SSL به طور پیش فرض غیر فعال است و می توانید در صورت نیاز آن را روشن کنید.
+در ادامه توضیح می دهیم که چطور زیرساخت PKI را خودتان راه اندازی کنید و با استفاده از آن
+بتوانید certificate بسازید و kafka را برای استفاده از آن تنظیم کنید.
+
+#### ساختن certificate و کلید SSL برای broker های کافکا 
+
+برای راه اندازی یک یا چند بروکر کافکا که از SSL پشتیبانی کنند در ابتدا باید کلید های عمومی و خصوصی را برای هر سرور ایجاد کنیم.
+از آنجا که کافکا انتظار دارد که تمام کلید ها و certificate ها در keystore ها ذخیره شده باشند، از دستور keytool جاوا برای آن استفاده می کنیم.
+از آنچا که می خواهیم از فرمت PKCS12 استفاده کنیم،‌دستور را به صورت زیر می نویسیم:
+
+<div dir = "ltr">
+
+```commandline
+keytool -keystore {keystorefile} -alias localhost -validity {validity} -genkey -keyalg RSA -storetype pkcs12
+```
+</div>
+
+برای اجرای این دستور باید دو پارامتر را مشخص کنیم.
+
+1. keystorefile: 
+این فایل کلید های عمومی و خصوصی و certificate های هر بروکر را در خود نگه می دارد.
+بنابراین باید در جایی امن نگه داشته شود.
+در نتیجه بهتر است این فایل را فقط برای آن بروکری بفرستیم که کلید ها مربوط به آن است.
+
+2.validity:
+مدت زمانی که کلید ها معتبر هستند.
+
+#### ساختن یک CA 
+
+حال که یک سری کلید خصوصی و عمومی داریم، به یک مکانیزم مورد اعتماد برای امضای آنها نیاز داریم که در این مرحله آن را می سازیم.
+
+CA مسیولیت امضای certificate ها را بر عهده دارد.
+با استفاده از الگوریتم های رمزگذاری، جعل یک کلید بسیار سخت می شود و در نتیجه می توان از اصل بودن سروری که درخواست را برای ارسال می کنیم مطمین می شویم.
+
+<div dir = "ltr">
+
+```shell
+HOME            = .
+RANDFILE        = $ENV::HOME/.rnd
+
+####################################################################
+[ ca ]
+default_ca    = CA_default      # The default ca section
+
+[ CA_default ]
+
+base_dir      = .
+certificate   = $base_dir/cacert.pem   # The CA certifcate
+private_key   = $base_dir/cakey.pem    # The CA private key
+new_certs_dir = $base_dir              # Location for new certs after signing
+database      = $base_dir/index.txt    # Database index file
+serial        = $base_dir/serial.txt   # The current serial number
+
+default_days     = 1000         # How long to certify for
+default_crl_days = 30           # How long before next CRL
+default_md       = sha256       # Use public key default MD
+preserve         = no           # Keep passed DN ordering
+
+x509_extensions = ca_extensions # The extensions to add to the cert
+
+email_in_dn     = no            # Don't concat the email in the DN
+copy_extensions = copy          # Required to copy SANs from CSR to cert
+
+####################################################################
+[ req ]
+default_bits       = 4096
+default_keyfile    = cakey.pem
+distinguished_name = ca_distinguished_name
+x509_extensions    = ca_extensions
+string_mask        = utf8only
+
+####################################################################
+[ ca_distinguished_name ]
+countryName         = Country Name (2 letter code)
+countryName_default = DE
+
+stateOrProvinceName         = State or Province Name (full name)
+stateOrProvinceName_default = Test Province
+
+localityName                = Locality Name (eg, city)
+localityName_default        = Test Town
+
+organizationName            = Organization Name (eg, company)
+organizationName_default    = Test Company
+
+organizationalUnitName         = Organizational Unit (eg, division)
+organizationalUnitName_default = Test Unit
+
+commonName         = Common Name (e.g. server FQDN or YOUR name)
+commonName_default = Test Name
+
+emailAddress         = Email Address
+emailAddress_default = test@test.com
+
+####################################################################
+[ ca_extensions ]
+
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always, issuer
+basicConstraints       = critical, CA:true
+keyUsage               = keyCertSign, cRLSign
+
+####################################################################
+[ signing_policy ]
+countryName            = optional
+stateOrProvinceName    = optional
+localityName           = optional
+organizationName       = optional
+organizationalUnitName = optional
+commonName             = supplied
+emailAddress           = optional
+
+####################################################################
+[ signing_req ]
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid,issuer
+basicConstraints       = CA:FALSE
+keyUsage               = digitalSignature, keyEncipherment
+```
+
+</div>
+
+سپس یک دیتابیس و فایل شماره سریال می سازیم که حساب certificate هایی که CA امضا کرده است را نگه داریم.
+این فایل ها در کنار کلید های CA نگه داری می شوند:
+
+<div dir = "ltr">
+
+```text
+> echo 01 > serial.txt
+> touch index.txt
+```
+
+</div>
+
+حال می توانیم CA را تولید کنیم:
+
+<div dir = "ltr">
+
+```bash
+> openssl req -x509 -config openssl-ca.cnf -newkey rsa:4096 -sha256 -nodes -out cacert.pem -outform PEM
+```
+
+</div>
+
+البته این فایل ها باید به طور کامل ایمن نگه داری شوند چون اگر کسی به آنها دسترسی داشته باشد می تواند هویت خود را جعل کند
+و خودش را به جای سروری که مورد اعتماد شماست معرفی کند.
+
+در گام بعد،‌این CA را به truststore کلاینت اضافه می کنیم که کلاینت ها به آن اعتماد داشته باشند.
+
+<div dir = "ltr">
+
+```bash
+> keytool -keystore client.truststore.jks -alias CARoot -import -file ca-cert
+```
+
+</div>
+
+#### امضای certificate 
+
+برای امضای certificate با CA دستور زیر را می توان اجرا کرد:
+
+<div dir = "ltr">
+
+```bash
+> openssl ca -config openssl-ca.cnf -policy signing_policy -extensions signing_req -out {server certificate} -infiles {certificate signing request}
+```
+
+</div>
+
+در نهایت، باید Certificate خود CA و certificate امضا شده را به keystore اضافه کنیم:
+
+<div dir = "ltr">
+
+```bash
+> keytool -keystore {keystore} -alias CARoot -import -file {CA certificate}
+> keytool -keystore {keystore} -alias localhost -import -file cert-signed
+```
+
+</div>
+
+#### تنظیم client های کافکا 
+
+اگر که broker نیاز به هویت سنجی نداشته باشد، انجام این تنظیمات آسان است، 
+چون برای producer و consumer یکسان است. یک مثال از فایل تنظیمات به صورت زیر است:
+
+<div dir = "ltr">
+
+```yaml
+security.protocol=SSL
+ssl.truststore.location=/var/private/ssl/client.truststore.jks
+ssl.truststore.password=test1234
+```
+
+</div>
+
+توجه داشته باشید که 
+`ssl.truststore.password`
+اختیاری است اما داشتن آن اکیدا توصیه می شود. چون بدون آن، امکان دسترسی به truststore وجود دارد
+و اصالت سنجی هم غیر فعال است. اگر اعتبارسنجی client فعال باشد، باید یک keystore را هم تعریف کنیم.
+
+<div dir = "ltr"> 
+
+```yaml
+ssl.keystore.location=/var/private/ssl/client.keystore.jks
+ssl.keystore.password=test1234
+ssl.key.password=test1234
+```
+
+</div>
+
+#### تنظیم broker های کافکا 
+
+اگر ssl برای ارتباط بین بروکر ها فعال نشده باشد، باید هم برای PLAINTEXT و هم برای SSL پورت تنظیم شود.
+
+<div dir = "ltr"> 
+
+```yaml
+listeners=PLAINTEXT://host.name:port,SSL://host.name:port
+```
+
+</div>
+
+<div dir = "ltr"> 
+
+```yaml
+ssl.keystore.location=/var/private/ssl/server.keystore.jks
+ssl.keystore.password=test1234
+ssl.key.password=test1234
+ssl.truststore.location=/var/private/ssl/server.truststore.jks
+ssl.truststore.password=test1234
+```
+
+</div>
+
+
+## KAFKA CONNECT
+
+### پیش درآمد 
+
+KAFKA CONNECT 
+ابزاری است که با استفاده از آن می توان به صورت مقیاس پذیر و مطمین، داده ها را بین کافکا و سایر سیستم ها منتقل کرد.
+با استفاده از آن می توان به راحتی connector هایی تعریف کرد که مجموعه های بزرگی از داده را به داخل و خارج کافکا منتقل می کنند.
+Kafka Connect 
+میتواند پایگاه داده ها و یا گزارشات برنامه ها را هم به تاپیک های کافکا منتقل کند که با این کار،
+داده ها برای پردازش در یک جریان داده با تاخیر پایین مهیا می شوند.
+همچنین با کمک job های export، میتوان داده ی کافکا را به سیستم ها یا پایگاه داده های دیگر منتقل کرد و یا آنها را برای پردازش آفلاین استفاده کرد.
+
+از امکانات Kafka Connect می توان به موارد زیر اشاره کرد:
+
+- یک چهارچوب مشترک برای کانکتور های کافکا:
+از آنجا که در Kafka Connect استاندارد های اتصال به کافکا تعریف می شود، در نتیجه توسعه و اجرای کانکتور ها راحت تر صورت می پذیرد.
+
+- گره های توزیع شده و مستقل:
+امکان مقیاس پذیری در آن هم به سمت بالا و هم سمت پایین وجود دارد.
+
+- رابط REST:
+با استفاده از رابط Rest API،‌امکان مدیریت کانکتور های کافکا به راحتی وجود دارد.
+
+- مدیریت خودکار آفست ها:
+در صورتی که Kafka Connect اطلاعاتی اندک در مورد connector ها داشته باشد، می تواند کار commit کردن آفست ها را انجام دهد
+و این بخش که ممکن است باعث ایجاد باگ شود را از روی دوش برنامه نویس بردارد.
+
+- توزیع پذیر و مقیاس پذیر:
+Kafka Connect
+پروتکل group management را توسعه می دهد. در نتیجه به راحتی می توان در هر زمان تعداد worker ها را تغییر داد.
+
+- توانایی اتصال سرویس های streaming و batch:
+با توجه به قابلیت های کافکا، امکان اتصال سیستم های streaming و batch وجود دارد.
+
 
 </div>
 
