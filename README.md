@@ -79,7 +79,7 @@
  </li>
 شکل زیر رابط های کاربری و نحوه کار کافکا را بصورت شماتیک نشان می دهد.
 
-<img src='./one.JPG'>
+<img src='./neda/one.JPG'>
 
 </br>
 بطور کلی نحوه کار کافکا بصورت ذیل است:
@@ -617,6 +617,126 @@ Admin API از مدیریت و بازرسی موضوعات، بروکرها، ac
 </p>
 </br>
 </br>
+
+## طراحی
+
+کافکا باید بتواند تمامی داده‌های real-time یک شرکت بزرگ را مدیریت کند. همچنین باید بتواند جریان وقایع را با حجم بالایی پشتیبانی کند و feedها را به صورت توزیع شده پردازش کند.
+
+برای برآورده کردن این مقاصد طراحی کافکا دارای چند معیار کلیدی است که آنها را در چند بخش معرفی می‌کنیم.
+
+### the producer
+
+#### تنظیم لود
+
+producer داده را بدون مداخله با brokerای که مسئول partition است ارسال می‌کند. به همین خاطر هر گره کافکا می‌تواند به درخواست‌های در رابطه با زنده بودن هر سرور و محل مسئول partitionها در هر زمان پاسخ بدهد تا producer درخواست خود را به درستی مسیردهی کند.
+
+برای
+
+## عملیات
+
+### حذف و اضافه کردن topic
+
+می‌توان topicها را به صورت دستی ایجاد کرد یا هنگامی که برای اولین بار داده‌ای را در یک topic ناموجود منتشر می‌کنیم خودکار ایجاد می‌شوند.
+
+اضافه کردن و تغییر topicها به شکل زیر است:
+
+```script
+  > bin/kafka-topics.sh --bootstrap-server broker_host:port --create --topic my_topic_name --partitions 20 --replication-factor 3 --config x=y
+```
+
+معیار replication factor کنترل می‌کند که چند سرور هر پیغام را تکثیر می‌کند. اگر replication factor برابر با 3 باشد، با fail شدن 2 سرور دسترسی به داده از بین می‌رود. توصیه می‌شود این مقدار 2 یا 3 باشد.
+
+تعداد partitions کنترل می‌کند که topic به چند log تقسیم می‌شود. تعداد partitionها از جهات مختلفی تاثیر گذار است. اولا هر partition باید بر روی یک سرور جا بشود. دوما تعداد partitionها بر حداکثر میزان موازی‌سازی مشتریان موثر است. هر partition در فولدری مخصوص به خود در log directory کافکا ذخیره می‌شود. نام این فولدرها شامل نام topic، یک خط تیره (-) و آی دی partition خواهد بد.
+
+این تنظیمات نوشته شده در command line تنظیمات پیش فرض سرور را تغییر خواند داد.
+
+### تغییر topicها
+
+می‌توان با استفاده از همان دستورات مشابه می‌توانت تنظیمات یک topic را تغییر داد.
+
+برای اضافه کردن partition دستور زیر را داریم:
+
+```terminal
+  > bin/kafka-topics.sh --bootstrap-server broker_host:port --alter --topic my_topic_name --partitions 40
+```
+
+در حال حاضر کافکا از دستور کاهش partition پشتیبانی نمی‌کند.
+
+اضافه کردن تنظیمات:
+
+```terminal
+  > bin/kafka-configs.sh --bootstrap-server broker_host:port --entity-type topics --entity-name my_topic_name --alter --add-config x=y
+```
+
+حذف کردن تنظیمات:
+
+```terminal
+  > bin/kafka-configs.sh --bootstrap-server broker_host:port --entity-type topics --entity-name my_topic_name --alter --delete-config x
+```
+
+و حذف کردن topic:
+
+```terminal
+  > bin/kafka-topics.sh --bootstrap-server broker_host:port --delete --topic my_topic_name
+```
+
+### shutdown ظریف
+
+کلاستر کافکا به طور خودکار هر خاموشی یا failure را در brokerها تشخیص می‌دهد و رهبر جدید را برای partitionهای آن ماشین انتخاب می‌کند، چه خاموشی سرور بر اثر failure باشد و چه به صورت عمدی از دور خارج شود.
+
+برای خارج کردن عمدی یک سرور از دور، کافکا روشی ظریف‌تر از صرفا کشتن سرور ارائه می‌دهد. این روش دو بهینه سازی دارد.
+
+1. تمام لاگ‌های سرور با دیسک همگام سازی می‌شوند تا هنگام restart نیازی به بازیابی لاگ‌ها نباشد. به همین دلیل سرعت restart افزایش می‌یابد.
+
+1. قبل از خاموشی تمامی partitionهایی که سرور رهبر آنها بوده به دیگر سرورهایی که آنها را تکثیر می‌کردند منتقل می‌شوند. بدین صورت فرایند انتقال رهبری تسریع می‌شود و زمان در دسترس نبودن partition به حداقل می‌رسد.
+
+همگام‌سازی لاگ‌ها در هر حالت از توقف سرور جز با hard kill انجام می‌شود. اما انتقلب کنترل شده رهبری به یک تنظیمات خاص نیاز دارد:
+
+```terminal
+controlled.shutdown.enable=true
+```
+
+### چک کردن جایگاه مصرف‌کنندگان
+
+در کافکا ابزاری وجود دارد که موقعیت همه مصرف‌کنندگان را در یک گروه مصرف‌کننده نشان می‌دهد و همچنین نشان می‌دهد که چقدر از انتهای لاگ عقب هستند. اجرای این ابزار در یک گروه مصرف کننده به نام my-group که موضوعی به نام my-topic را مصرف می کند به صورت زیر است:
+
+```terminal
+  > bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my-group
+```
+
+که خروجی آن به صورت زیر خواهد بود:
+
+```terminal
+  TOPIC                          PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG        CONSUMER-ID                                       HOST                           CLIENT-ID
+  my-topic                       0          2               4               2          consumer-1-029af89c-873c-4751-a720-cefd41a669d6   /127.0.0.1                     consumer-1
+  my-topic                       1          2               3               1          consumer-1-029af89c-873c-4751-a720-cefd41a669d6   /127.0.0.1                     consumer-1
+  my-topic                       2          2               3               1          consumer-2-42c1abd4-e3b2-425d-a8bb-e1ea49b29bb2   /127.0.0.1                     consumer-2
+```
+
+### مدیریت گروه‌های مصرف کنندگان
+
+با ابزار ConsumerGroupCommand می‌توانیم گروه‌های مصرف‌کننده را فهرست، توصیف یا حذف کنیم. یک گروه مصرف کننده را تنها زمانی می‌توان به صورت دستی حذف کرد که گروه هیچ عضو فعالی نداشته باشد. به عنوان مثال، برای فهرست کردن همه گروه های مصرف کننده در همه موضوعات:
+
+```terminal
+  > bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+
+    test-consumer-group
+```
+
+و برای مشاهده offsetها، گروه مصرف‌کننده را به شکل زیر توصیف می‌کنیم:
+
+```terminal
+  > bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my-group
+
+  TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                    HOST            CLIENT-ID
+  topic3          0          241019          395308          154289          consumer2-e76ea8c3-5d30-4299-9005-47eb41f3d3c4 /127.0.0.1      consumer2
+  topic2          1          520678          803288          282610          consumer2-e76ea8c3-5d30-4299-9005-47eb41f3d3c4 /127.0.0.1      consumer2
+  topic3          1          241018          398817          157799          consumer2-e76ea8c3-5d30-4299-9005-47eb41f3d3c4 /127.0.0.1      consumer2
+  topic1          0          854144          855809          1665            consumer1-3fc8d6f1-581a-4472-bdf3-3515b4aee8c1 /127.0.0.1      consumer1
+  topic2          0          460537          803290          342753          consumer1-3fc8d6f1-581a-4472-bdf3-3515b4aee8c1 /127.0.0.1      consumer1
+  topic3          2          243655          398812          155157          consumer4-117fe4d3-c6c1-4178-8ee9-eb4a3954bee0 /127.0.0.1      consumer4
+```
+
 
 ## امنیت 
 
